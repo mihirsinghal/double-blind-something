@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Free RSA Group Signature Generator</title>
+    <title>Minimal RSA Group Signature</title>
     <style>
         body {
             font-family: 'Segoe UI', Arial, sans-serif;
@@ -12,107 +12,35 @@
             margin: 0;
             padding: 0;
         }
-        .top-bar {
+        .container {
+            max-width: 500px;
+            margin: 40px auto;
+            padding: 24px;
+            border-radius: 10px;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.07);
+            background: #fafbfc;
             display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 18px 32px 0 32px;
+            flex-direction: column;
+            gap: 18px;
         }
-        .top-bar .app-title {
-            font-size: 1.1rem;
-            color: #888;
-            letter-spacing: 1px;
-        }
-        .top-bar .setup-link {
-            font-size: 1rem;
-            color: #888;
-            text-decoration: underline;
-            cursor: pointer;
-            margin-left: 8px;
-        }
-        .top-bar .docs-btn {
-            background: #f5f5f5;
-            border: 1px solid #ccc;
-            border-radius: 6px;
-            padding: 6px 16px;
-            font-size: 1rem;
-            cursor: pointer;
-            color: #444;
-        }
-        h1 {
-            text-align: center;
-            font-size: 1.7rem;
-            font-weight: 400;
-            margin: 10px 0 30px 0;
-        }
-        .main-grid {
-            display: grid;
-            grid-template-columns: 1.1fr 1fr;
-            grid-template-rows: auto auto 1fr auto;
-            gap: 24px 32px;
-            max-width: 1200px;
-            margin: 0 auto;
-            padding: 0 32px 32px 32px;
-        }
-        .section-label {
-            font-size: 1.05rem;
-            font-weight: 500;
-            margin-bottom: 4px;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-        .share-link {
-            font-size: 0.95rem;
-            color: #888;
-            text-decoration: underline;
-            cursor: pointer;
-        }
-        textarea, input[type="text"] {
+        textarea {
             width: 100%;
             font-size: 1rem;
             padding: 10px;
             border: 1px solid #ccc;
             border-radius: 6px;
             resize: none;
-            margin-bottom: 8px;
             background: #fafafa;
             box-sizing: border-box;
-        }
-        textarea {
-            min-height: 90px;
-            font-family: 'Segoe UI', Arial, sans-serif;
-        }
-        .options-box {
-            border: 1px solid #eee;
-            border-radius: 8px;
-            padding: 16px 12px 12px 12px;
-            margin-bottom: 12px;
-            background: #fafbfc;
-            width: 220px;
-        }
-        .options-box label {
-            display: flex;
-            align-items: center;
-            font-size: 1rem;
-            margin-bottom: 8px;
-            gap: 8px;
-        }
-        .options-box input[type="checkbox"] {
-            width: 16px;
-            height: 16px;
-        }
-        .options-box .option-input {
-            margin-bottom: 8px;
+            min-height: 70px;
         }
         .button-group {
             display: flex;
-            flex-direction: column;
-            gap: 8px;
-            margin-bottom: 12px;
+            gap: 12px;
+            justify-content: flex-end;
         }
         .button-group button {
-            padding: 8px 0;
+            padding: 8px 20px;
             font-size: 1rem;
             border: 1px solid #bbb;
             border-radius: 6px;
@@ -123,139 +51,40 @@
         .button-group button:hover {
             background: #e0e0e0;
         }
-        .arrow-buttons {
-            display: flex;
-            gap: 8px;
-            justify-content: center;
-        }
-        .arrow-buttons button {
-            width: 36px;
-            height: 36px;
-            font-size: 1.2rem;
-            border-radius: 50%;
-            border: 1px solid #bbb;
-            background: #f5f5f5;
-            cursor: pointer;
-            transition: background 0.2s;
-        }
-        .arrow-buttons button:hover {
-            background: #e0e0e0;
-        }
-        .instructions {
-            grid-column: 1 / span 2;
-            background: #fafbfc;
-            border: 1px solid #eee;
-            border-radius: 8px;
-            padding: 18px 24px 12px 24px;
-            font-size: 1rem;
-            margin-top: 10px;
-        }
-        .instructions code {
-            background: #f3f3f3;
-            border-radius: 4px;
-            padding: 2px 6px;
-            font-size: 0.98em;
-        }
-        .double-blind-key {
-            grid-column: 1 / span 2;
-            margin-top: 0;
-            text-align: center;
-            font-size: 1.05rem;
-            color: #444;
-        }
-        .double-blind-key code {
-            background: #f3f3f3;
-            border-radius: 4px;
-            padding: 2px 6px;
-            font-size: 0.98em;
-        }
-        @media (max-width: 900px) {
-            .main-grid {
-                grid-template-columns: 1fr;
-                gap: 18px;
-                padding: 0 8px 24px 8px;
-            }
-            .instructions, .double-blind-key {
-                padding: 12px 8px;
-            }
-        }
     </style>
 </head>
 <body>
-    <div class="top-bar">
-        <div>
-            <span class="app-title">App</span>
-            <span class="setup-link">Setup</span>
-        </div>
-        <button class="docs-btn">Docs</button>
-    </div>
-    <h1>Free RSA Group Signature Generator</h1>
-    <div class="main-grid">
-        <!-- Left Column -->
-        <div>
-            <div class="section-label">Message <span class="share-link">Share Link</span></div>
-            <textarea placeholder="Enter your message here..."></textarea>
-            <div class="section-label">Group Public Keys</div>
-            <textarea placeholder="Paste group public keys here..."></textarea>
-            <div class="section-label">Identity Namespace</div>
-            <textarea placeholder="(Optional) Enter identity namespace..."></textarea>
-        </div>
-        <!-- Right Column -->
-        <div>
-            <div class="section-label">Group Signature <span class="share-link">Share Link</span></div>
-            <textarea placeholder="Group signature will appear here..."></textarea>
-            <div class="button-group">
-                <button>Sign</button>
-                <button>Verify</button>
-            </div>
-            <div class="arrow-buttons">
-                <button>&gt;&gt;</button>
-                <button>&lt;&lt;</button>
-            </div>
-            <div class="options-box">
-                <label><input type="checkbox" checked> Secret ID</label>
-                <div class="option-input">
-                    <input type="text" placeholder="Masked Identity">
-                </div>
-                <div class="option-input">
-                    <input type="text" placeholder="Unmasked Identity">
-                </div>
-            </div>
-            <div class="section-label">Identity Revealer <span class="share-link">Share Link</span></div>
-            <textarea placeholder="Identity revealer will appear here..."></textarea>
-        </div>
-        <!-- Instructions -->
-        <div class="instructions">
-            If you wish to generate group signatures, you must input your personal Double Blind Key™.<br>
-            Generate the key from your personal SSH private key using following command.<br>
-            Read our docs or <code>man ssh-keygen</code> to learn more.<br><br>
-            <code>echo "E PLURIBUS UNUM; DO NOT SHARE" | ssh-keygen -Y sign -n double-blind.xyz -f ~/.ssh/id_rsa</code>
-        </div>
-        <!-- Double Blind Key Section -->
-        <div class="double-blind-key">
-            <strong>Your Double Blind Key</strong><br>
-            <span style="color:#888;">Hover to reveal secret info</span>
+    <div class="container">
+        <textarea placeholder="Message"></textarea>
+        <textarea placeholder="Group Public Keys"></textarea>
+        <textarea placeholder="Group Signature" readonly></textarea>
+        <div class="button-group">
+            <button id="sign-btn">Sign</button>
+            <button id="verify-btn">Verify</button>
         </div>
     </div>
     <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            const signBtn = document.querySelector('.button-group button');
-            const messageBox = document.querySelectorAll('textarea')[0]; //message
-            const signatureBox = document.querySelectorAll('textarea')[3]; //grp signature
+    document.addEventListener('DOMContentLoaded', function() {
+        const textareas = document.querySelectorAll('textarea');
+        const messageBox = textareas[0];
+        const keysBox = textareas[1];
+        const signatureBox = textareas[2];
+        const signBtn = document.getElementById('sign-btn');
+        // const verifyBtn = document.getElementById('verify-btn'); // For future use
 
-            signBtn.addEventListener('click', function() {
-                const message = messageBox.value;
-                fetch('http://localhost:3001/api/sign', {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({message})
-                })
-                .then(res => res.json())
-                .then(data => {
-                    signatureBox.value = data.signature;
-                });
+        signBtn.addEventListener('click', function() {
+            const message = messageBox.value;
+            fetch('http://localhost:3001/api/sign', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({message})
+            })
+            .then(res => res.json())
+            .then(data => {
+                signatureBox.value = data.signature;
             });
         });
+    });
     </script>
 </body>
 </html> 
