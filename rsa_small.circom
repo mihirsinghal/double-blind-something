@@ -96,7 +96,7 @@ template GroupVerify (size) {
 }
 
 
-component main {public [sig, e, n, message]} = GroupVerify (5);
+component main {public [e, n, message]} = GroupVerify (5);
 
 /* INPUT = {
     "sig": "3",
