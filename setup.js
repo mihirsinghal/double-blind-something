@@ -19,15 +19,16 @@ async function setup() {
         console.log("Compiling circuit...");
         execSync('circom rsa_small.circom --r1cs --wasm --sym', { stdio: 'inherit' });
         
-        // Download powers of tau if not exists
+        // Download powers of tau if not exists (need larger file for RSA circuit)
         console.log("Checking powers of tau file...");
-        if (!fs.existsSync("./powersOfTau28_hez_final_10.ptau")) {
-            console.log("Downloading powers of tau (this may take a while)...");
+        const ptauFile = "powersOfTau28_hez_final_20.ptau";
+        if (!fs.existsSync(`./${ptauFile}`)) {
+            console.log("Downloading powers of tau (this may take a while - ~50MB)...");
             try {
-                execSync('curl -L -o powersOfTau28_hez_final_10.ptau https://storage.googleapis.com/zkevm/ptau/powersOfTau28_hez_final_10.ptau', { stdio: 'inherit' });
+                execSync(`curl -L -o ${ptauFile} https://storage.googleapis.com/zkevm/ptau/${ptauFile}`, { stdio: 'inherit' });
             } catch (error) {
-                console.log("Primary download failed, trying alternative...");
-                execSync('curl -L -o powersOfTau28_hez_final_10.ptau https://github.com/iden3/snarkjs/raw/master/powersOfTau28_hez_final_10.ptau', { stdio: 'inherit' });
+                console.log("Primary download failed, trying hermez...");
+                execSync(`curl -L -o ${ptauFile} https://hermez.s3-eu-west-1.amazonaws.com/${ptauFile}`, { stdio: 'inherit' });
             }
         }
         
@@ -35,7 +36,7 @@ async function setup() {
         console.log("Generating proving and verifying keys...");
         await snarkjs.zKey.newZKey(
             "rsa_small.r1cs",
-            "powersOfTau28_hez_final_10.ptau",
+            ptauFile,
             "rsa_small_0000.zkey"
         );
         

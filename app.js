@@ -107,7 +107,7 @@ async function generateProof() {
         // Ensure we have exactly 5 public key pairs for the circuit
         const paddedPublicKeys = [...publicKeysList];
         while (paddedPublicKeys.length < 5) {
-            paddedPublicKeys.push({ e: '0', n: '0' });
+            paddedPublicKeys.push(paddedPublicKeys[paddedPublicKeys.length - 1]);
         }
         if (paddedPublicKeys.length > 5) {
             paddedPublicKeys.length = 5;
@@ -194,7 +194,7 @@ async function verifyProof() {
             // Extract expected e and n arrays (padded to 5)
             const paddedKeys = [...publicKeysList];
             while (paddedKeys.length < 5) {
-                paddedKeys.push({ e: '0', n: '0' });
+                paddedKeys.push(paddedKeys[paddedKeys.length - 1]);
             }
             if (paddedKeys.length > 5) {
                 paddedKeys.length = 5;
