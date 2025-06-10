@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Poseidon Hash Preimage ZK Proof</title>
+    <title>RSA Signature ZK Proof</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -80,20 +80,22 @@
 </head>
 <body>
     <div class="container">
-        <h1>Poseidon Hash Preimage ZK Proof</h1>
+        <h1>RSA Signature ZK Proof</h1>
         
         <div class="section">
             <h3>Setup</h3>
-            <label>Valid Hashes (comma-separated):</label>
-            <input type="text" id="validHashes" placeholder="Enter comma-separated Poseidon hashes">
+            <label>Public Keys (format: e1,n1;e2,n2;...):</label>
+            <input type="text" id="publicKeys" placeholder="Enter public key pairs like: 77,12827;10,12827">
             <button onclick="setupCircuit()">Setup Circuit</button>
             <div id="setupOutput" class="output"></div>
         </div>
 
         <div class="section">
             <h3>Generate Proof</h3>
-            <label>Preimage:</label>
-            <input type="text" id="preimage" placeholder="Enter your secret preimage">
+            <label>Signature:</label>
+            <input type="text" id="signature" placeholder="Enter RSA signature">
+            <label>Message:</label>
+            <input type="text" id="message" placeholder="Enter message that was signed">
             <button onclick="generateProof()">Generate Proof</button>
             <div id="proofOutput" class="output"></div>
         </div>
