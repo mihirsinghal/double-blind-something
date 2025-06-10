@@ -50,10 +50,11 @@ template ModExp (bits) {
     signal partial[bits];
     signal doubled[bits];
 
-    var accum = 1;
+    signal accum[bits+1];
+    accum[bits] <== 1;
     for (var i=bits-1; i>=0; i--) {
         mod1[i] = Mod(bits);
-        mod1[i].a <== accum * accum; //possibly sus, may need to convert to signal
+        mod1[i].a <== accum[i+1] * accum[i+1]; //possibly sus, may need to convert to signal
         mod1[i].b <== c;
         doubled[i] <== mod1[i].out;
         partial[i] <== n2b.out[i] * (a-1) + 1;
@@ -61,9 +62,9 @@ template ModExp (bits) {
         mod2[i] = Mod(bits);
         mod2[i].a <== doubled[i] * partial[i];
         mod2[i].b <== c;
-        accum = mod2[i].out;
+        accum[i] <== mod2[i].out;
     }
-    out <== accum;
+    out <== accum[0];
 }
 
 
@@ -79,7 +80,8 @@ template GroupVerify (size) {
 
     component exp[size];
     signal differences[size];
-    var accum = 1;
+    signal accum[size + 1];
+    accum[0] <== 1;
 
     for (var i = 0; i < size; i++) {
         exp[i] = ModExp(120);
@@ -87,18 +89,18 @@ template GroupVerify (size) {
         exp[i].b <== e[i];
         exp[i].c <== n[i];
         differences[i] <== exp[i].out - message;
-        accum *= differences[i];
+        accum[i+1] <== accum[i] * differences[i];
     }
     
-    accum === 0;
+    accum[size] === 0;
 }
 
 
-component main = GroupVerify (2);
+component main {} = GroupVerify (3);
 
 /* INPUT = {
     "sig": "3",
-    "e": ["77", "10"],
-    "n": ["12827", "12827"],
+    "e": ["77", "10", "1"],
+    "n": ["12827", "12827", "12827"],
     "message": "5566"
 } */
