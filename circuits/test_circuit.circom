@@ -1,6 +1,6 @@
 pragma circom 2.1.6;
 
-include "circomlib/poseidon.circom";
+include "circuits/poseidon.circom";
 // include "https://github.com/0xPARC/circom-secp256k1/blob/master/circuits/bigint.circom";
 
 template NumToBits () {
@@ -19,7 +19,6 @@ template NumToBits () {
     for (var i=0; i<4; i++) {
         b[i] * (b[i] - 1) === 0;
     }
-
 }
 
 template Main () {

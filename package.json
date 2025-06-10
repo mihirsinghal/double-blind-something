@@ -23,7 +23,9 @@
   "homepage": "https://github.com/mihirsinghal/double-blind-something#readme",
   "dependencies": {
     "body-parser": "^2.2.0",
+    "circomlib": "^2.0.5",
     "cors": "^2.8.5",
-    "express": "^5.1.0"
+    "express": "^5.1.0",
+    "snarkjs": "^0.7.5"
   }
 }
