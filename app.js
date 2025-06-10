@@ -1,7 +1,7 @@
 let circuit = null;
 let provingKey = null;
 let verifyingKey = null;
-let validHashesList = [];
+let publicKeysList = [];
 
 // Convert input to field element format for the circuit
 function inputToFieldElement(input) {
@@ -18,16 +18,21 @@ function inputToFieldElement(input) {
 }
 
 async function setupCircuit() {
-    const validHashesInput = document.getElementById('validHashes').value;
+    const publicKeysInput = document.getElementById('publicKeys').value;
     const setupOutput = document.getElementById('setupOutput');
     
     try {
         setupOutput.innerHTML = 'Setting up circuit...';
         
-        // Parse valid hashes (these should be poseidon hashes in string format)
-        validHashesList = validHashesInput.split(',').map(h => h.trim());
-        if (validHashesList.length === 0) {
-            throw new Error('Please provide at least one valid hash');
+        // Parse public keys (format: "e1,n1;e2,n2;...")
+        const keyPairs = publicKeysInput.split(';').map(pair => pair.trim());
+        publicKeysList = keyPairs.map(pair => {
+            const [e, n] = pair.split(',').map(k => k.trim());
+            if (!e || !n) throw new Error('Invalid public key format');
+            return { e, n };
+        });
+        if (publicKeysList.length === 0) {
+            throw new Error('Please provide at least one public key pair');
         }
         
         // Load circuit files
@@ -35,14 +40,14 @@ async function setupCircuit() {
         
         try {
             // Load the compiled circuit
-            const circuitResponse = await fetch('./poseidon_preimage_js/poseidon_preimage.wasm');
+            const circuitResponse = await fetch('./rsa_small_js/rsa_small.wasm');
             if (!circuitResponse.ok) {
                 throw new Error('Failed to load circuit WASM file. Make sure to run the setup first.');
             }
             circuit = await circuitResponse.arrayBuffer();
             
             // Load proving key
-            const provingKeyResponse = await fetch('./poseidon_preimage_0000.zkey');
+            const provingKeyResponse = await fetch('./rsa_small_0000.zkey');
             if (!provingKeyResponse.ok) {
                 throw new Error('Failed to load proving key. Make sure to run the setup first.');
             }
@@ -67,9 +72,9 @@ async function setupCircuit() {
         
         setupOutput.innerHTML = `
             <div class="success">Circuit setup complete!</div>
-            <div>Valid hashes: ${validHashesList.length}</div>
+            <div>Public key pairs: ${publicKeysList.length}</div>
             <div>Circuit loaded and ready to generate proofs</div>
-            <div>Note: The circuit will verify that the preimage hashes to one of the provided valid hashes</div>
+            <div>Note: The circuit will verify that the signature is valid for one of the provided public key pairs</div>
         `;
         
     } catch (error) {
@@ -78,10 +83,11 @@ async function setupCircuit() {
 }
 
 async function generateProof() {
-    const preimage = document.getElementById('preimage').value;
+    const signature = document.getElementById('signature').value;
+    const message = document.getElementById('message').value;
     const proofOutput = document.getElementById('proofOutput');
     
-    if (validHashesList.length === 0) {
+    if (publicKeysList.length === 0) {
         proofOutput.innerHTML = '<div class="error">Please setup the circuit first</div>';
         return;
     }
@@ -95,20 +101,23 @@ async function generateProof() {
         proofOutput.innerHTML = 'Generating proof...';
         
         // Prepare circuit inputs
-        const preimageForCircuit = inputToFieldElement(preimage);
+        const signatureForCircuit = inputToFieldElement(signature);
+        const messageForCircuit = inputToFieldElement(message);
         
-        // Ensure we have exactly 5 valid hashes for the circuit
-        const paddedValidHashes = [...validHashesList];
-        while (paddedValidHashes.length < 5) {
-            paddedValidHashes.push('0');
+        // Ensure we have exactly 5 public key pairs for the circuit
+        const paddedPublicKeys = [...publicKeysList];
+        while (paddedPublicKeys.length < 5) {
+            paddedPublicKeys.push({ e: '0', n: '0' });
         }
-        if (paddedValidHashes.length > 5) {
-            paddedValidHashes.length = 5;
+        if (paddedPublicKeys.length > 5) {
+            paddedPublicKeys.length = 5;
         }
         
         const circuitInputs = {
-            preimage: preimageForCircuit,
-            validHashes: paddedValidHashes
+            sig: signatureForCircuit,
+            e: paddedPublicKeys.map(k => inputToFieldElement(k.e)),
+            n: paddedPublicKeys.map(k => inputToFieldElement(k.n)),
+            message: messageForCircuit
         };
         
         console.log('Circuit inputs:', circuitInputs);
@@ -123,8 +132,8 @@ async function generateProof() {
         // Generate the full proof directly
         const { proof, publicSignals } = await snarkjs.groth16.fullProve(
             circuitInputs,
-            "./poseidon_preimage_js/poseidon_preimage.wasm",
-            "./poseidon_preimage_0000.zkey"
+            "./rsa_small_js/rsa_small.wasm",
+            "./rsa_small_0000.zkey"
         );
         
         const fullProof = {
@@ -177,28 +186,49 @@ async function verifyProof() {
         );
         
         if (isValidProof) {
-            // Additional check: verify that the public signals match our expected valid hashes
-            const publicHashes = proofData.publicSignals.map(s => BigInt(s));
-            const expectedHashes = validHashesList.map(h => BigInt(h));
+            // Additional check: verify that the public signals match the expected inputs
+            // Public signals format: [sig, e[0], e[1], e[2], e[3], e[4], n[0], n[1], n[2], n[3], n[4], message]
+            const expectedSig = inputToFieldElement(document.getElementById('signature').value);
+            const expectedMessage = inputToFieldElement(document.getElementById('message').value);
             
-            // Check if public signals match the valid hashes we set up
-            const signalsMatch = publicHashes.length === expectedHashes.length &&
-                publicHashes.every((hash, index) => hash === expectedHashes[index]);
+            // Extract expected e and n arrays (padded to 5)
+            const paddedKeys = [...publicKeysList];
+            while (paddedKeys.length < 5) {
+                paddedKeys.push({ e: '0', n: '0' });
+            }
+            if (paddedKeys.length > 5) {
+                paddedKeys.length = 5;
+            }
+            const expectedE = paddedKeys.map(k => inputToFieldElement(k.e));
+            const expectedN = paddedKeys.map(k => inputToFieldElement(k.n));
             
-            if (signalsMatch) {
+            // Compare public signals
+            const [actualSig, ...rest] = proofData.publicSignals.map(s => s.toString());
+            const actualE = rest.slice(0, 5);
+            const actualN = rest.slice(5, 10);
+            const actualMessage = rest[10];
+            
+            const inputsMatch = 
+                actualSig === expectedSig &&
+                actualMessage === expectedMessage &&
+                actualE.every((e, i) => e === expectedE[i]) &&
+                actualN.every((n, i) => n === expectedN[i]);
+            
+            if (inputsMatch) {
                 verifyOutput.innerHTML = `
                     <div class="success">✓ Proof verified successfully!</div>
                     <div>✓ Cryptographic proof is valid</div>
-                    <div>✓ Public signals match expected valid hashes</div>
-                    <div>The prover knows a preimage that hashes to one of the valid hashes without revealing the preimage.</div>
-                    <div><strong>Public signals (valid hashes):</strong> ${proofData.publicSignals.length}</div>
+                    <div>✓ Public signals match expected inputs</div>
+                    <div>The prover has a valid RSA signature for the message using one of the provided public keys.</div>
+                    <div><strong>Signature:</strong> ${actualSig}</div>
+                    <div><strong>Message:</strong> ${actualMessage}</div>
                 `;
             } else {
                 verifyOutput.innerHTML = `
                     <div class="error">✗ Proof verification failed!</div>
                     <div>✓ Cryptographic proof is valid</div>
-                    <div>✗ Public signals don't match expected valid hashes</div>
-                    <div>The proof may be for a different set of valid hashes.</div>
+                    <div>✗ Public signals don't match expected inputs</div>
+                    <div>The proof may be for different signature/message/keys.</div>
                 `;
             }
         } else {
@@ -215,19 +245,18 @@ async function verifyProof() {
     }
 }
 
-// Helper function to generate some example hashes for testing
-function generateExampleHashes() {
-    // Placeholder values - you need to compute actual Poseidon hashes
-    const exampleHashes = ['1', '2', '3', '4', '5'];
+// Helper function to generate some example public keys for testing
+function generateExampleKeys() {
+    // Example from the circuit comment
+    const exampleKeys = '77,12827;10,12827';
     
-    document.getElementById('validHashes').value = exampleHashes.join(', ');
-    console.log('Placeholder hashes loaded. You need to:');
-    console.log('1. Compute actual Poseidon hashes for your preimages');
-    console.log('2. Replace these placeholder values with real hashes');
-    console.log('3. Use the corresponding preimage to generate the proof');
+    document.getElementById('publicKeys').value = exampleKeys;
+    document.getElementById('signature').value = '3';
+    document.getElementById('message').value = '5566';
+    console.log('Example RSA keys and values loaded from circuit comment');
 }
 
 // Initialize with example data
 window.onload = function() {
-    generateExampleHashes();
+    generateExampleKeys();
 };
