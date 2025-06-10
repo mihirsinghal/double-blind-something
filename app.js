@@ -187,8 +187,8 @@ async function verifyProof() {
         
         if (isValidProof) {
             // Additional check: verify that the public signals match the expected inputs
-            // Public signals format: [sig, e[0], e[1], e[2], e[3], e[4], n[0], n[1], n[2], n[3], n[4], message]
-            const expectedSig = inputToFieldElement(document.getElementById('signature').value);
+            // Public signals format: [e[0], e[1], e[2], e[3], e[4], n[0], n[1], n[2], n[3], n[4], message]
+            // Note: signature is now private and not in public signals
             const expectedMessage = inputToFieldElement(document.getElementById('message').value);
             
             // Extract expected e and n arrays (padded to 5)
@@ -202,14 +202,13 @@ async function verifyProof() {
             const expectedE = paddedKeys.map(k => inputToFieldElement(k.e));
             const expectedN = paddedKeys.map(k => inputToFieldElement(k.n));
             
-            // Compare public signals
-            const [actualSig, ...rest] = proofData.publicSignals.map(s => s.toString());
-            const actualE = rest.slice(0, 5);
-            const actualN = rest.slice(5, 10);
-            const actualMessage = rest[10];
+            // Compare public signals (no signature anymore)
+            const publicSignals = proofData.publicSignals.map(s => s.toString());
+            const actualE = publicSignals.slice(0, 5);
+            const actualN = publicSignals.slice(5, 10);
+            const actualMessage = publicSignals[10];
             
             const inputsMatch = 
-                actualSig === expectedSig &&
                 actualMessage === expectedMessage &&
                 actualE.every((e, i) => e === expectedE[i]) &&
                 actualN.every((n, i) => n === expectedN[i]);
@@ -220,8 +219,8 @@ async function verifyProof() {
                     <div>✓ Cryptographic proof is valid</div>
                     <div>✓ Public signals match expected inputs</div>
                     <div>The prover has a valid RSA signature for the message using one of the provided public keys.</div>
-                    <div><strong>Signature:</strong> ${actualSig}</div>
                     <div><strong>Message:</strong> ${actualMessage}</div>
+                    <div><em>Note: The signature remains private and is not revealed in the proof.</em></div>
                 `;
             } else {
                 verifyOutput.innerHTML = `
