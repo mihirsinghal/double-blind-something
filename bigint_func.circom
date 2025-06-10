@@ -229,8 +229,13 @@ function long_div(n, k, m, a, b){
     return out;
 }
 
+// version of above function that works even if leading bit of b is nonzero
+// b must be nonzero
 function long_div_gen(n, ka, kb, a, b) {
-    
+    while (b[kb - 1] == 0) {
+        kb--;
+    }
+    return long_div(n, kb, ka - kb, a, b);
 }
 
 // n bits per register
