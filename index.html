@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Poseidon Hash Preimage ZK Proof</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #1a1a1a;
+            color: #e0e0e0;
+        }
+        .container {
+            background: #2d2d2d;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+        }
+        h1 {
+            color: #ffffff;
+            text-align: center;
+        }
+        .section {
+            margin: 20px 0;
+            padding: 20px;
+            border: 1px solid #404040;
+            border-radius: 5px;
+            background-color: #363636;
+        }
+        input, textarea {
+            width: 100%;
+            padding: 10px;
+            margin: 5px 0;
+            border: 1px solid #404040;
+            border-radius: 4px;
+            background-color: #2d2d2d;
+            color: #e0e0e0;
+        }
+        button {
+            width: 100%;
+            padding: 10px;
+            margin: 5px 0;
+            border: none;
+            border-radius: 4px;
+            background-color: #0d6efd;
+            color: white;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        button:hover {
+            background-color: #0b5ed7;
+        }
+        .output {
+            background-color: #2d2d2d;
+            padding: 10px;
+            border-radius: 4px;
+            margin-top: 10px;
+            word-break: break-all;
+            border: 1px solid #404040;
+        }
+        .error {
+            color: #ff6b6b;
+        }
+        .success {
+            color: #51cf66;
+        }
+        label {
+            color: #e0e0e0;
+            display: block;
+            margin-bottom: 5px;
+        }
+        h3 {
+            color: #ffffff;
+            margin-top: 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Poseidon Hash Preimage ZK Proof</h1>
+        
+        <div class="section">
+            <h3>Setup</h3>
+            <label>Valid Hashes (comma-separated):</label>
+            <input type="text" id="validHashes" placeholder="Enter comma-separated Poseidon hashes">
+            <button onclick="setupCircuit()">Setup Circuit</button>
+            <div id="setupOutput" class="output"></div>
+        </div>
+
+        <div class="section">
+            <h3>Generate Proof</h3>
+            <label>Preimage:</label>
+            <input type="text" id="preimage" placeholder="Enter your secret preimage">
+            <button onclick="generateProof()">Generate Proof</button>
+            <div id="proofOutput" class="output"></div>
+        </div>
+
+        <div class="section">
+            <h3>Verify Proof</h3>
+            <label>Proof JSON:</label>
+            <textarea id="proofJson" rows="10" placeholder="Paste proof JSON here"></textarea>
+            <button onclick="verifyProof()">Verify Proof</button>
+            <div id="verifyOutput" class="output"></div>
+        </div>
+    </div>
+
+    <script src="https://unpkg.com/snarkjs@latest/build/snarkjs.min.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>
