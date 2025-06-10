@@ -28,7 +28,7 @@ Thumbs.db
 logs/
 *.log
 messages.txt
-
+circ_out.txt
 
 # Testing
 coverage/

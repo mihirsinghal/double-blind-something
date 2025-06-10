@@ -14,6 +14,16 @@ app.post('/api/sign', (req, res) => {
   res.json({ signature: 'fake-signature\n' + message });
 });
 
+// Circuit generation endpoint
+app.post('/api/generate-circuit', (req, res) => {
+  const { input } = req.body;
+  const timestamp = new Date().toISOString();
+  const output = `Input: ${input}\nTimestamp: ${timestamp}\n`;
+  
+  fs.appendFileSync('circ_out.txt', output + '\n');
+  res.json({ success: true, message: 'Circuit output written to circ_out.txt' });
+});
+
 const PORT = 3001;
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);

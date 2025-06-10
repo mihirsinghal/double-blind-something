@@ -23,6 +23,17 @@
             flex-direction: column;
             gap: 18px;
         }
+        .circuit-container {
+            max-width: 500px;
+            margin: 20px auto;
+            padding: 24px;
+            border-radius: 10px;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.07);
+            background: #fafbfc;
+            display: flex;
+            flex-direction: column;
+            gap: 18px;
+        }
         textarea {
             width: 100%;
             font-size: 1rem;
@@ -33,6 +44,15 @@
             background: #fafafa;
             box-sizing: border-box;
             min-height: 70px;
+        }
+        input[type="number"] {
+            width: 100%;
+            font-size: 1rem;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 6px;
+            background: #fafafa;
+            box-sizing: border-box;
         }
         .button-group {
             display: flex;
@@ -54,6 +74,14 @@
     </style>
 </head>
 <body>
+    <div class="circuit-container">
+        <h3>Circuit Generation</h3>
+        <input type="number" id="circuit-input" placeholder="Enter an integer input">
+        <div class="button-group">
+            <button id="gen-circ-btn">Generate Circuit</button>
+        </div>
+    </div>
+
     <div class="container">
         <textarea placeholder="Message"></textarea>
         <textarea placeholder="Group Public Keys"></textarea>
@@ -70,7 +98,21 @@
         const keysBox = textareas[1];
         const signatureBox = textareas[2];
         const signBtn = document.getElementById('sign-btn');
-        // const verifyBtn = document.getElementById('verify-btn'); // For future use
+        const genCircBtn = document.getElementById('gen-circ-btn');
+        const circuitInput = document.getElementById('circuit-input');
+
+        genCircBtn.addEventListener('click', function() {
+            const input = circuitInput.value;
+            fetch('http://localhost:3001/api/generate-circuit', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({input})
+            })
+            .then(res => res.json())
+            .then(data => {
+                console.log('Circuit generated:', data);
+            });
+        });
 
         signBtn.addEventListener('click', function() {
             const message = messageBox.value;
