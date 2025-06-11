@@ -31,6 +31,7 @@ verification_key.json
 # Python files
 privkey.py
 pubkey.py
+pubkey_2.py
 ssh_extract_3.py
 
 # Signature files

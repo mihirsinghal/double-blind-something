@@ -278,6 +278,182 @@ function autoFillFromSSH(e, n, signature) {
     }, 3000);
 }
 
+// SSH Public Key parsing functions
+function extractRSAComponentsFromPublicKey(publicKeyString) {
+    /**
+     * Extract RSA components from SSH public key string manually.
+     * 
+     * Args:
+     *     publicKeyString: SSH public key as a string (ssh-rsa AAAAB3... [comment])
+     * 
+     * Returns:
+     *     object: {exponent, modulus, bitLength}
+     */
+    
+    const content = publicKeyString.trim();
+    
+    // SSH public key format: "ssh-rsa <base64_data> [comment]"
+    const parts = content.split(/\s+/);
+    if (parts.length < 2) {
+        throw new Error("Invalid SSH public key format");
+    }
+    
+    const keyType = parts[0];
+    if (keyType !== "ssh-rsa") {
+        throw new Error(`Expected ssh-rsa key type, got ${keyType}`);
+    }
+    
+    // Decode the base64 data
+    const keyData = base64ToUint8Array(parts[1]);
+    
+    // Parse the SSH public key format
+    let offset = 0;
+    
+    function readSSHString(data, offset) {
+        if (offset + 4 > data.length) {
+            throw new Error(`Cannot read length at offset ${offset}`);
+        }
+        
+        const length = new DataView(data.buffer).getUint32(offset, false); // big-endian
+        offset += 4;
+        
+        if (offset + length > data.length) {
+            throw new Error(`Cannot read ${length} bytes at offset ${offset}`);
+        }
+        
+        return {
+            data: data.slice(offset, offset + length),
+            newOffset: offset + length
+        };
+    }
+    
+    // Read key type (should be "ssh-rsa")
+    const keyTypeResult = readSSHString(keyData, offset);
+    const keyTypeBytes = new TextDecoder().decode(keyTypeResult.data);
+    offset = keyTypeResult.newOffset;
+    
+    if (keyTypeBytes !== "ssh-rsa") {
+        throw new Error(`Invalid key type in data: ${keyTypeBytes}`);
+    }
+    
+    // Read exponent (e)
+    const eResult = readSSHString(keyData, offset);
+    const eBytes = eResult.data;
+    offset = eResult.newOffset;
+    
+    // Read modulus (n)
+    const nResult = readSSHString(keyData, offset);
+    const nBytes = nResult.data;
+    
+    // Convert bytes to BigInt (big-endian)
+    let exponent = BigInt(0);
+    for (let i = 0; i < eBytes.length; i++) {
+        exponent = (exponent << BigInt(8)) + BigInt(eBytes[i]);
+    }
+    
+    let modulus = BigInt(0);
+    for (let i = 0; i < nBytes.length; i++) {
+        modulus = (modulus << BigInt(8)) + BigInt(nBytes[i]);
+    }
+    
+    // Calculate bit length
+    const bitLength = modulus.toString(2).length;
+    
+    return {
+        exponent: exponent,
+        modulus: modulus,
+        bitLength: bitLength
+    };
+}
+
+function extractPublicKey() {
+    const publicKeyInput = document.getElementById('publicKeyInput').value;
+    const publicKeyOutput = document.getElementById('publicKeyOutput');
+    
+    try {
+        if (!publicKeyInput.trim()) {
+            throw new Error('Please paste an SSH RSA public key');
+        }
+        
+        const result = extractRSAComponentsFromPublicKey(publicKeyInput);
+        
+        // Determine exponent type
+        let exponentInfo = "";
+        if (result.exponent === BigInt(65537)) {
+            exponentInfo = "✓ Standard RSA exponent 65537 (0x10001)";
+        } else if (result.exponent === BigInt(3)) {
+            exponentInfo = "⚠ Small exponent 3 (less secure)";
+        } else {
+            exponentInfo = `• Custom exponent ${result.exponent}`;
+        }
+        
+        publicKeyOutput.innerHTML = `
+            <div class="success">✓ SSH RSA Public Key parsed successfully!</div>
+            
+            <div><strong>Public Key Exponent (e):</strong></div>
+            <div style="word-break: break-all; font-family: monospace; background: #1a1a1a; padding: 10px; border-radius: 4px; margin: 5px 0;">
+                ${result.exponent.toString()}
+            </div>
+            
+            <div><strong>Exponent (hex):</strong></div>
+            <div style="word-break: break-all; font-family: monospace; background: #1a1a1a; padding: 10px; border-radius: 4px; margin: 5px 0;">
+                0x${result.exponent.toString(16)}
+            </div>
+            
+            <div><strong>Public Key Modulus (n):</strong></div>
+            <div style="word-break: break-all; font-family: monospace; background: #1a1a1a; padding: 10px; border-radius: 4px; margin: 5px 0;">
+                ${result.modulus.toString()}
+            </div>
+            
+            <div><strong>Modulus (hex):</strong></div>
+            <div style="word-break: break-all; font-family: monospace; background: #1a1a1a; padding: 10px; border-radius: 4px; margin: 5px 0;">
+                0x${result.modulus.toString(16)}
+            </div>
+            
+            <div><strong>Key Size:</strong> ${result.bitLength} bits</div>
+            <div><strong>Exponent Type:</strong> ${exponentInfo}</div>
+            
+            <div style="margin-top: 15px;">
+                <button onclick="autoFillFromPublicKey('${result.exponent.toString()}', '${result.modulus.toString()}')" 
+                        style="background-color: #28a745; margin: 5px 0;">
+                    Auto-fill Public Key Fields
+                </button>
+            </div>
+        `;
+        
+    } catch (error) {
+        publicKeyOutput.innerHTML = `<div class="error">Error parsing public key: ${error.message}</div>`;
+        console.error('Public key parsing error:', error);
+    }
+}
+
+function autoFillFromPublicKey(e, n) {
+    // Auto-fill the public keys field with the extracted values
+    document.getElementById('publicKeys').value = `${e},${n}`;
+    
+    // Show confirmation
+    const confirmationDiv = document.createElement('div');
+    confirmationDiv.className = 'success auto-fill-confirmation';
+    confirmationDiv.style.margin = '10px 0';
+    confirmationDiv.innerHTML = '✓ Auto-filled public key fields!';
+    
+    // Find the public key output div and add confirmation
+    const publicKeyOutput = document.getElementById('publicKeyOutput');
+    const existingConfirmation = publicKeyOutput.querySelector('.auto-fill-confirmation');
+    if (existingConfirmation) {
+        existingConfirmation.remove();
+    }
+    
+    publicKeyOutput.appendChild(confirmationDiv);
+    
+    // Remove confirmation after 3 seconds
+    setTimeout(() => {
+        if (confirmationDiv.parentNode) {
+            confirmationDiv.remove();
+        }
+    }, 3000);
+}
+
 async function setupCircuit() {
     const publicKeysInput = document.getElementById('publicKeys').value;
     const setupOutput = document.getElementById('setupOutput');
