@@ -28,6 +28,11 @@
 powersOfTau28_hez_final_*.ptau
 verification_key.json
 
+# Python files
+privkey.py
+pubkey.py
+ssh_extract_3.py
+
 
 
 

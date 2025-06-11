@@ -83,6 +83,14 @@
         <h1>RSA Signature ZK Proof</h1>
         
         <div class="section">
+            <h3>SSH Signature Extractor</h3>
+            <label>SSH Signature File Content:<br><small>Paste the entire content of an SSH signature file (.sig) created by ssh-keygen</small></label>
+            <textarea id="sshSignatureInput" rows="8" placeholder="Paste SSH signature file content here (-----BEGIN SSH SIGNATURE----- ... -----END SSH SIGNATURE-----)"></textarea>
+            <button onclick="extractSSHSignature()">Extract Signature Integer</button>
+            <div id="sshSignatureOutput" class="output"></div>
+        </div>
+
+        <div class="section">
             <h3>Setup</h3>
             <label>Public Keys (format: e1,n1;e2,n2;...):<br><small>Supports large exponents and moduli. Enter as decimal or hex (0x...) numbers. Example: 0x10001,0xC34F...;65537,12345678901234567890</small></label>
             <input type="text" id="publicKeys" placeholder="Enter public key pairs like: 65537,12345678901234567890;0x10001,0xC34F...">
