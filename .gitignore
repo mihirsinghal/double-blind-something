@@ -20,6 +20,7 @@
 *.pem
 # powers of tau files
 powersOfTau28_hez_final_*.ptau
+verification_key.json
 
 
 
