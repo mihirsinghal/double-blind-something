@@ -125,6 +125,19 @@ async function generateProof() {
     }
     
     try {
+        proofOutput.innerHTML = 'Finding correct public key index...';
+        
+        // Find the correct public key index
+        const correctIndex = await findCorrectPublicKeyIndex(signature, message, publicKeysList);
+        
+        if (correctIndex === -1) {
+            proofOutput.innerHTML = `
+                <div class="error">✗ No matching public key found!</div>
+                <div>The signature does not match any of the provided public keys.</div>
+            `;
+            return;
+        }
+        
         proofOutput.innerHTML = 'Generating proof...';
         
         // Constants for the circuit
@@ -183,7 +196,8 @@ async function generateProof() {
             sig: signatureChunks,
             e: eArrays,
             N: nArrays,
-            message: messageChunks
+            message: messageChunks,
+            index: correctIndex // Add the correct index as a circuit input
         };
         
         console.log('Circuit inputs:', circuitInputs);
@@ -206,6 +220,7 @@ async function generateProof() {
             <div class="success">Proof generated successfully!</div>
             <div><strong>Proof size:</strong> ${JSON.stringify(proof).length} bytes</div>
             <div><strong>Public signals:</strong> ${publicSignals.length}</div>
+            <div><strong>Correct key index:</strong> ${correctIndex}</div>
             <div><strong>Proof:</strong></div>
             <pre>${JSON.stringify(fullProof, null, 2)}</pre>
         `;
@@ -217,6 +232,41 @@ async function generateProof() {
         proofOutput.innerHTML = `<div class="error">Proof generation failed: ${error.message}</div>`;
         console.error('Detailed error:', error);
     }
+}
+
+// Function to find the correct public key index that matches the signature
+async function findCorrectPublicKeyIndex(signature, message, publicKeys) {
+    for (let i = 0; i < publicKeys.length; i++) {
+        const { e, n } = publicKeys[i];
+        // Convert to BigInt for calculations
+        const sig = BigInt(signature);
+        const msg = BigInt(message);
+        const exp = BigInt(e);
+        const mod = BigInt(n);
+        
+        // Check if signature^e mod n == message
+        const result = modPow(sig, exp, mod);
+        if (result === msg) {
+            return i;
+        }
+    }
+    return -1; // No matching key found
+}
+
+// Helper function for modular exponentiation
+function modPow(base, exponent, modulus) {
+    if (modulus === 1n) return 0n;
+    
+    let result = 1n;
+    base = base % modulus;
+    while (exponent > 0n) {
+        if (exponent % 2n === 1n) {
+            result = (result * base) % modulus;
+        }
+        base = (base * base) % modulus;
+        exponent = exponent >> 1n;
+    }
+    return result;
 }
 
 async function verifyProof() {
@@ -248,8 +298,6 @@ async function verifyProof() {
         
         if (isValidProof) {
             // Additional check: verify that the public signals match the expected inputs
-            // Public signals format: [e[0][0], e[0][1], ..., e[2][127], N[0][0], N[0][1], ..., N[2][1], message[0], message[1]]
-            // Note: signature is now private and not in public signals
             const expectedMessage = inputToFieldElement(document.getElementById('message').value);
             
             // Extract expected e and n arrays (padded to 3)
@@ -263,25 +311,22 @@ async function verifyProof() {
             const expectedE = paddedKeys.map(k => inputToFieldElement(k.e));
             const expectedN = paddedKeys.map(k => inputToFieldElement(k.n));
             
-            // Compare public signals (no signature anymore)
+            // Compare public signals
             const publicSignals = proofData.publicSignals.map(s => s.toString());
             
             // Extract flattened arrays
-            // e is 3 arrays of 128 bits each (64 * 2)
             const actualE = [];
             for (let i = 0; i < 3; i++) {
                 const eBits = publicSignals.slice(i * 128, (i + 1) * 128);
                 actualE.push(eBits);
             }
             
-            // N is 3 arrays of 2 chunks each
             const actualN = [];
             for (let i = 0; i < 3; i++) {
                 const nChunks = publicSignals.slice(384 + i * 2, 384 + (i + 1) * 2);
                 actualN.push(nChunks);
             }
             
-            // message is 2 chunks
             const actualMessage = publicSignals.slice(390, 392);
             
             console.log('Public signals:');

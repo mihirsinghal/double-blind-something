@@ -1,11 +1,11 @@
 pragma circom 2.1.6;
 
 include "node_modules/circomlib/circuits/poseidon.circom";
-// include "node_modules/circomlib/circuits/bitify.circom";
+include "node_modules/circomlib/circuits/multiplexer.circom";
 include "bigint_func.circom";
 include "bigint.circom";
 // include "circomlib/poseidon.circom";
-// include "circomlib/bitify.circom";
+// include "circomlib/multiplexer.circom";
 
 
 
@@ -121,44 +121,34 @@ template GroupVerify(size, n, k) {
     signal input e[size][n * k];
     signal input N[size][k];
     signal input message[k];
+    signal input index;
 
-    component exp[size];
-    component add[size];
-    component mul[size];
-    signal differences[size][k];
+    component muxE = Multiplexer(n * k, size);
+    component muxN = Multiplexer(k, size);
 
     for (var i = 0; i < size; i++) {
-        exp[i] = BigModExp(n, k);
-        for (var j = 0; j < k; j++) {
-            exp[i].a[j] <== sig[j];
-            exp[i].c[j] <== N[i][j];
-        }
         for (var j = 0; j < n * k; j++) {
-            exp[i].b[j] <== e[i][j];
+            muxE.inp[i][j] <== e[i][j];
         }
-        for (var l = 0; l < k; l++) {
-            differences[i][l] <== exp[i].out[l] - message[l];
-        }
-    }
-
-    signal inv[size][k];
-    signal z[size][k];
-    signal temp[size][k];
-    signal accum[size][k+1];
-    for (var i = 0; i < size; i++) {
         for (var j = 0; j < k; j++) {
-            inv[i][j] <-- (differences[i][j] == 0) ? 1 : 0;
-            z[i][j] <-- (differences[i][j] == 0) ? 0 : 1/differences[i][j];
-            temp[i][j] <== z[i][j] * differences[i][j];
-
-            0 === inv[i][j] * differences[i][j];
-            (inv[i][j] - 1) * (temp[i][j] - 1) === 0;
-            (inv[i][j] - 1) * inv[i][j] === 0;
-            accum[i][j] <== (j == 0) ? 1 : accum[i][j - 1] * inv[i][j];
+            muxN.inp[i][j] <== N[i][j];
         }
-        accum[i][k] <== (i == 0) ? (accum[0][k-1] - 1) : accum[i - 1][k] * (accum[i][k-1] - 1);
     }
-    accum[size - 1][k] === 0;
+    muxE.sel <== index;
+    muxN.sel <== index;
+
+    component exp = BigModExp(n, k);
+    
+    for (var j = 0; j < k; j++) {
+        exp.a[j] <== sig[j];
+        exp.c[j] <== muxN.out[j];
+    }
+    for (var j = 0; j < n * k; j++) {
+        exp.b[j] <== muxE.out[j];
+    }
+    for (var j = 0; j < k; j++) {
+        message[j] === exp.out[j];
+    }
 }
 
 
@@ -183,6 +173,7 @@ component main {public [e, N, message]} = GroupVerify(3, 64, 2);
         ["1", "0", "1"],
         ["1", "1", "0"] 
     ],
-    "message": ["1", "0", "1"]
+    "message": ["1", "0", "1"],
+    "index": "0"
 } */
 
