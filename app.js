@@ -3,6 +3,57 @@ let provingKey = null;
 let verifyingKey = null;
 let publicKeysList = [];
 
+// Circuit constants - must match rsa_big.circom GroupVerify(3, 120, 35, 17)
+const CIRCUIT_SIZE = 3;        // Number of public keys supported
+const CHUNK_BITS = 120;        // Bits per chunk (n parameter)
+const NUM_CHUNKS = 35;         // Number of chunks (k parameter)
+const EXPONENT_BITS = 17;      // Exponent bits (exp_bits parameter)
+
+// Function to verify that our constants match the circuit file
+async function verifyCircuitConstants() {
+    try {
+        const response = await fetch('./rsa_big.circom');
+        if (!response.ok) {
+            console.warn('Could not fetch rsa_big.circom to verify constants');
+            return false;
+        }
+        
+        const circomContent = await response.text();
+        
+        // Look for the GroupVerify instantiation pattern
+        const groupVerifyPattern = /component\s+main[^=]*=\s*GroupVerify\s*\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*\)/;
+        const match = circomContent.match(groupVerifyPattern);
+        
+        if (!match) {
+            console.error('Could not find GroupVerify component instantiation in rsa_big.circom');
+            return false;
+        }
+        
+        const [, circuitSize, chunkBits, numChunks, exponentBits] = match.map(Number);
+        
+        const constantsMatch = 
+            CIRCUIT_SIZE === circuitSize &&
+            CHUNK_BITS === chunkBits &&
+            NUM_CHUNKS === numChunks &&
+            EXPONENT_BITS === exponentBits;
+        
+        if (constantsMatch) {
+            console.log('✓ Circuit constants match rsa_big.circom parameters:', {
+                CIRCUIT_SIZE, CHUNK_BITS, NUM_CHUNKS, EXPONENT_BITS
+            });
+            return true;
+        } else {
+            console.error('✗ Circuit constants DO NOT match rsa_big.circom!');
+            console.error('Expected from circom:', { circuitSize, chunkBits, numChunks, exponentBits });
+            console.error('Actual in app.js:', { CIRCUIT_SIZE, CHUNK_BITS, NUM_CHUNKS, EXPONENT_BITS });
+            return false;
+        }
+    } catch (error) {
+        console.error('Error verifying circuit constants:', error);
+        return false;
+    }
+}
+
 // Convert input to field element format for the circuit
 function inputToFieldElement(input) {
     if (typeof input === 'string') {
@@ -17,15 +68,15 @@ function inputToFieldElement(input) {
     }
 }
 
-// Utility function to convert a big number to an array of 120-bit chunks
-function bigIntTo120BitChunks(bigNum, numChunks) {
+// Utility function to convert a big number to an array of chunks
+function bigIntToChunks(bigNum, numChunks) {
     const chunks = [];
-    const mask = BigInt("0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF"); // 120-bit mask
+    const mask = (BigInt(1) << BigInt(CHUNK_BITS)) - BigInt(1); // Dynamic mask based on CHUNK_BITS
     let remaining = BigInt(bigNum);
     
     for (let i = 0; i < numChunks; i++) {
         chunks.push((remaining & mask).toString());
-        remaining = remaining >> BigInt(120);
+        remaining = remaining >> BigInt(CHUNK_BITS);
     }
     
     return chunks;
@@ -285,6 +336,13 @@ async function setupCircuit() {
     try {
         setupOutput.innerHTML = 'Setting up circuit...';
         
+        // Verify circuit constants match the .circom file
+        const constantsValid = await verifyCircuitConstants();
+        if (!constantsValid) {
+            setupOutput.innerHTML = '<div class="error">Circuit constants mismatch! Check console for details.</div>';
+            return;
+        }
+        
         // Parse public keys (format: "e1,n1;e2,n2;...")
         const keyPairs = publicKeysInput.split(';').map(pair => pair.trim());
         publicKeysList = keyPairs.map(pair => {
@@ -385,53 +443,49 @@ async function generateProof() {
         
         proofOutput.innerHTML = 'Preparing circuit inputs...';
         
-        // Constants for the circuit
-        const K = 35; // Number of 120-bit chunks for signature and modulus
-        const EXP_BITS = 17; // Number of bits for exponent
-        
         const prepareStart = performance.now();
-        // Convert signature to 120-bit chunks
-        const signatureChunks = bigIntTo120BitChunks(signature, K);
+        // Convert signature to chunks
+        const signatureChunks = bigIntToChunks(signature, NUM_CHUNKS);
         
-        // Convert message to 120-bit chunks
-        const messageChunks = bigIntTo120BitChunks(message, K);
+        // Convert message to chunks
+        const messageChunks = bigIntToChunks(message, NUM_CHUNKS);
         
         // Convert public keys to appropriate format
         const eArrays = publicKeysList.map(key => {
-            const eBits = bigIntToBits(key.e, EXP_BITS);
+            const eBits = bigIntToBits(key.e, EXPONENT_BITS);
             return eBits;
         });
         
         const nArrays = publicKeysList.map(key => {
-            return bigIntTo120BitChunks(key.n, K);
+            return bigIntToChunks(key.n, NUM_CHUNKS);
         });
 
         console.log('Before padding:');
         console.log('eArrays:', eArrays);
         console.log('nArrays:', nArrays);
         
-        // Ensure we have exactly 3 public key pairs for the circuit
+        // Ensure we have exactly CIRCUIT_SIZE public key pairs for the circuit
         const paddedPublicKeys = [...publicKeysList];
-        while (paddedPublicKeys.length < 3) {
+        while (paddedPublicKeys.length < CIRCUIT_SIZE) {
             paddedPublicKeys.push(paddedPublicKeys[paddedPublicKeys.length - 1]);
         }
-        if (paddedPublicKeys.length > 3) {
-            paddedPublicKeys.length = 3;
+        if (paddedPublicKeys.length > CIRCUIT_SIZE) {
+            paddedPublicKeys.length = CIRCUIT_SIZE;
         }
 
-        // Pad the arrays to ensure we have exactly 3 entries
-        while (eArrays.length < 3) {
+        // Pad the arrays to ensure we have exactly CIRCUIT_SIZE entries
+        while (eArrays.length < CIRCUIT_SIZE) {
             eArrays.push(eArrays[eArrays.length - 1]);
         }
-        if (eArrays.length > 3) {
-            eArrays.length = 3;
+        if (eArrays.length > CIRCUIT_SIZE) {
+            eArrays.length = CIRCUIT_SIZE;
         }
 
-        while (nArrays.length < 3) {
+        while (nArrays.length < CIRCUIT_SIZE) {
             nArrays.push(nArrays[nArrays.length - 1]);
         }
-        if (nArrays.length > 3) {
-            nArrays.length = 3;
+        if (nArrays.length > CIRCUIT_SIZE) {
+            nArrays.length = CIRCUIT_SIZE;
         }
 
         console.log('After padding:');
@@ -563,13 +617,13 @@ async function verifyProof() {
             // Additional check: verify that the public signals match the expected inputs
             const expectedMessage = inputToFieldElement(document.getElementById('message').value);
             
-            // Extract expected e and n arrays (padded to 3)
+            // Extract expected e and n arrays (padded to CIRCUIT_SIZE)
             const paddedKeys = [...publicKeysList];
-            while (paddedKeys.length < 3) {
+            while (paddedKeys.length < CIRCUIT_SIZE) {
                 paddedKeys.push(paddedKeys[paddedKeys.length - 1]);
             }
-            if (paddedKeys.length > 3) {
-                paddedKeys.length = 3;
+            if (paddedKeys.length > CIRCUIT_SIZE) {
+                paddedKeys.length = CIRCUIT_SIZE;
             }
             const expectedE = paddedKeys.map(k => inputToFieldElement(k.e));
             const expectedN = paddedKeys.map(k => inputToFieldElement(k.n));
@@ -579,18 +633,20 @@ async function verifyProof() {
             
             // Extract flattened arrays
             const actualE = [];
-            for (let i = 0; i < 3; i++) {
-                const eBits = publicSignals.slice(i * 17, (i + 1) * 17);
+            for (let i = 0; i < CIRCUIT_SIZE; i++) {
+                const eBits = publicSignals.slice(i * EXPONENT_BITS, (i + 1) * EXPONENT_BITS);
                 actualE.push(eBits);
             }
             
             const actualN = [];
-            for (let i = 0; i < 3; i++) {
-                const nChunks = publicSignals.slice(51 + i * 35, 51 + (i + 1) * 35);
+            const nStartOffset = CIRCUIT_SIZE * EXPONENT_BITS;
+            for (let i = 0; i < CIRCUIT_SIZE; i++) {
+                const nChunks = publicSignals.slice(nStartOffset + i * NUM_CHUNKS, nStartOffset + (i + 1) * NUM_CHUNKS);
                 actualN.push(nChunks);
             }
             
-            const actualMessage = publicSignals.slice(156, 191);
+            const messageStartOffset = nStartOffset + CIRCUIT_SIZE * NUM_CHUNKS;
+            const actualMessage = publicSignals.slice(messageStartOffset, messageStartOffset + NUM_CHUNKS);
             
             console.log('Public signals:');
             console.log('Expected E:', expectedE);
