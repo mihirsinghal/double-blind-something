@@ -1,10 +1,10 @@
 pragma circom 2.1.6;
 
-// include "node_modules/circomlib/circuits/poseidon.circom";
+include "node_modules/circomlib/circuits/poseidon.circom";
 // include "node_modules/circomlib/circuits/bitify.circom";
 include "bigint_func.circom";
 include "bigint.circom";
-include "circomlib/poseidon.circom";
+// include "circomlib/poseidon.circom";
 // include "circomlib/bitify.circom";
 
 

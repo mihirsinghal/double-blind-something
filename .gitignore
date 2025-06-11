@@ -18,6 +18,11 @@
 # misc
 .DS_Store
 *.pem
+# powers of tau files
+powersOfTau28_hez_final_*.ptau
+
+
+
 
 # debug
 npm-debug.log*

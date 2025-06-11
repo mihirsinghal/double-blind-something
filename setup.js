@@ -17,7 +17,7 @@ async function setup() {
         
         // Compile the circuit
         console.log("Compiling circuit...");
-        execSync('circom rsa_small.circom --r1cs --wasm --sym', { stdio: 'inherit' });
+        execSync('circom rsa_big.circom --r1cs --wasm --sym', { stdio: 'inherit' });
         
         // Download powers of tau if not exists (need larger file for RSA circuit)
         console.log("Checking powers of tau file...");
@@ -35,28 +35,25 @@ async function setup() {
         // Generate proving and verifying keys
         console.log("Generating proving and verifying keys...");
         await snarkjs.zKey.newZKey(
-            "rsa_small.r1cs",
+            "rsa_big.r1cs",
             ptauFile,
-            "rsa_small_0000.zkey"
+            "rsa_big_0000.zkey"
         );
         
         // Export verifying key
         console.log("Exporting verifying key...");
-        const vKey = await snarkjs.zKey.exportVerificationKey("rsa_small_0000.zkey");
+        const vKey = await snarkjs.zKey.exportVerificationKey("rsa_big_0000.zkey");
         fs.writeFileSync("verification_key.json", JSON.stringify(vKey, null, 2));
         
         console.log("\n✅ Setup complete!");
         console.log("Files generated:");
-        console.log("- rsa_small.wasm (in rsa_small_js/ directory)");
-        console.log("- rsa_small_0000.zkey");
+        console.log("- rsa_big.wasm (in rsa_big_js/ directory)");
+        console.log("- rsa_big_0000.zkey");
         console.log("- verification_key.json");
         console.log("\nYou can now run: npm run serve");
         
     } catch (error) {
-        console.error("Setup failed:", error.message);
-        console.error("\nTroubleshooting:");
-        console.error("1. Make sure circom is installed: https://docs.circom.io/getting-started/installation/");
-        console.error("2. Check that your circuit file is valid");
+        console.error("Setup failed:", error);
     }
 }
 
