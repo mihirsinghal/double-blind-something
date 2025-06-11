@@ -84,8 +84,8 @@
         
         <div class="section">
             <h3>Setup</h3>
-            <label>Public Keys (format: e1,n1;e2,n2;...):</label>
-            <input type="text" id="publicKeys" placeholder="Enter public key pairs like: 77,12827;10,12827">
+            <label>Public Keys (format: e1,n1;e2,n2;...):<br><small>Supports large exponents and moduli. Enter as decimal or hex (0x...) numbers. Example: 0x10001,0xC34F...;65537,12345678901234567890</small></label>
+            <input type="text" id="publicKeys" placeholder="Enter public key pairs like: 65537,12345678901234567890;0x10001,0xC34F...">
             <button onclick="setupCircuit()">Setup Circuit</button>
             <div id="setupOutput" class="output"></div>
         </div>
