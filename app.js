@@ -20,7 +20,7 @@ function inputToFieldElement(input) {
 // Utility function to convert a big number to an array of 120-bit chunks
 function bigIntTo120BitChunks(bigNum, numChunks) {
     const chunks = [];
-    const mask = BigInt("0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF"); // 120-bit mask
+    const mask = BigInt("0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF"); // 120-bit mask
     let remaining = BigInt(bigNum);
     
     for (let i = 0; i < numChunks; i++) {
