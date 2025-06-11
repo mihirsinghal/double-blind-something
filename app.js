@@ -17,15 +17,15 @@ function inputToFieldElement(input) {
     }
 }
 
-// Utility function to convert a big number to an array of 64-bit chunks
-function bigIntTo64BitChunks(bigNum, numChunks) {
+// Utility function to convert a big number to an array of 120-bit chunks
+function bigIntTo120BitChunks(bigNum, numChunks) {
     const chunks = [];
-    const mask = BigInt("0xFFFFFFFFFFFFFFFF"); // 64-bit mask
+    const mask = BigInt("0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF"); // 120-bit mask
     let remaining = BigInt(bigNum);
     
     for (let i = 0; i < numChunks; i++) {
         chunks.push(Number(remaining & mask));
-        remaining = remaining >> BigInt(64);
+        remaining = remaining >> BigInt(120);
     }
     
     return chunks;
@@ -386,15 +386,15 @@ async function generateProof() {
         proofOutput.innerHTML = 'Preparing circuit inputs...';
         
         // Constants for the circuit
-        const K = 50; // Number of 64-bit chunks for signature and modulus
+        const K = 35; // Number of 120-bit chunks for signature and modulus
         const EXP_BITS = 17; // Number of bits for exponent
         
         const prepareStart = performance.now();
-        // Convert signature to 64-bit chunks
-        const signatureChunks = bigIntTo64BitChunks(signature, K);
+        // Convert signature to 120-bit chunks
+        const signatureChunks = bigIntTo120BitChunks(signature, K);
         
-        // Convert message to 64-bit chunks
-        const messageChunks = bigIntTo64BitChunks(message, K);
+        // Convert message to 120-bit chunks
+        const messageChunks = bigIntTo120BitChunks(message, K);
         
         // Convert public keys to appropriate format
         const eArrays = publicKeysList.map(key => {
@@ -403,7 +403,7 @@ async function generateProof() {
         });
         
         const nArrays = publicKeysList.map(key => {
-            return bigIntTo64BitChunks(key.n, K);
+            return bigIntTo120BitChunks(key.n, K);
         });
 
         console.log('Before padding:');
@@ -586,11 +586,11 @@ async function verifyProof() {
             
             const actualN = [];
             for (let i = 0; i < 3; i++) {
-                const nChunks = publicSignals.slice(51 + i * 50, 51 + (i + 1) * 50);
+                const nChunks = publicSignals.slice(51 + i * 35, 51 + (i + 1) * 35);
                 actualN.push(nChunks);
             }
             
-            const actualMessage = publicSignals.slice(201, 251);
+            const actualMessage = publicSignals.slice(156, 191);
             
             console.log('Public signals:');
             console.log('Expected E:', expectedE);
