@@ -359,10 +359,21 @@ async function generateProof() {
     }
     
     try {
+        const timings = {
+            start: performance.now(),
+            findIndex: 0,
+            prepareInputs: 0,
+            generateProof: 0,
+            total: 0
+        };
+
         proofOutput.innerHTML = 'Finding correct public key index...';
         
         // Find the correct public key index
+        const indexStart = performance.now();
         const correctIndex = await findCorrectPublicKeyIndex(signature, message, publicKeysList);
+        console.log("correctIndex = ", correctIndex);
+        timings.findIndex = performance.now() - indexStart;
         
         if (correctIndex === -1) {
             proofOutput.innerHTML = `
@@ -372,12 +383,13 @@ async function generateProof() {
             return;
         }
         
-        proofOutput.innerHTML = 'Generating proof...';
+        proofOutput.innerHTML = 'Preparing circuit inputs...';
         
         // Constants for the circuit
-        const K = 2; // Number of 64-bit chunks for signature and modulus
-        const N = 64; // Number of bits per chunk for exponent
+        const K = 50; // Number of 64-bit chunks for signature and modulus
+        const EXP_BITS = 17; // Number of bits for exponent
         
+        const prepareStart = performance.now();
         // Convert signature to 64-bit chunks
         const signatureChunks = bigIntTo64BitChunks(signature, K);
         
@@ -386,7 +398,7 @@ async function generateProof() {
         
         // Convert public keys to appropriate format
         const eArrays = publicKeysList.map(key => {
-            const eBits = bigIntToBits(key.e, N * K);
+            const eBits = bigIntToBits(key.e, EXP_BITS);
             return eBits;
         });
         
@@ -435,28 +447,45 @@ async function generateProof() {
         };
         
         console.log('Circuit inputs:', circuitInputs);
+        timings.prepareInputs = performance.now() - prepareStart;
         
         proofOutput.innerHTML = 'Computing witness and generating proof...';
         
         // Generate the full proof
+        const proofStart = performance.now();
         const { proof, publicSignals } = await snarkjs.groth16.fullProve(
             circuitInputs,
             "./rsa_big_js/rsa_big.wasm",
             "./rsa_big_0000.zkey"
         );
+        timings.generateProof = performance.now() - proofStart;
         
         const fullProof = {
             proof: proof,
             publicSignals: publicSignals
         };
         
+        timings.total = performance.now() - timings.start;
+        
+        // Format timings for display
+        const formatTime = (ms) => `${(ms / 1000).toFixed(2)}s`;
+        
         proofOutput.innerHTML = `
             <div class="success">Proof generated successfully!</div>
             <div><strong>Proof size:</strong> ${JSON.stringify(proof).length} bytes</div>
             <div><strong>Public signals:</strong> ${publicSignals.length}</div>
             <div><strong>Correct key index:</strong> ${correctIndex}</div>
-            <div><strong>Proof:</strong></div>
-            <pre>${JSON.stringify(fullProof, null, 2)}</pre>
+            <div><strong>Timings:</strong></div>
+            <ul>
+                <li>Finding correct key index: ${formatTime(timings.findIndex)}</li>
+                <li>Preparing circuit inputs: ${formatTime(timings.prepareInputs)}</li>
+                <li>Generating proof: ${formatTime(timings.generateProof)}</li>
+                <li>Total time: ${formatTime(timings.total)}</li>
+            </ul>
+            <details>
+                <summary><strong>Proof Details</strong></summary>
+                <pre>${JSON.stringify(fullProof, null, 2)}</pre>
+            </details>
         `;
         
         // Auto-fill the verify section
@@ -551,17 +580,17 @@ async function verifyProof() {
             // Extract flattened arrays
             const actualE = [];
             for (let i = 0; i < 3; i++) {
-                const eBits = publicSignals.slice(i * 128, (i + 1) * 128);
+                const eBits = publicSignals.slice(i * 17, (i + 1) * 17);
                 actualE.push(eBits);
             }
             
             const actualN = [];
             for (let i = 0; i < 3; i++) {
-                const nChunks = publicSignals.slice(384 + i * 2, 384 + (i + 1) * 2);
+                const nChunks = publicSignals.slice(51 + i * 50, 51 + (i + 1) * 50);
                 actualN.push(nChunks);
             }
             
-            const actualMessage = publicSignals.slice(390, 392);
+            const actualMessage = publicSignals.slice(201, 251);
             
             console.log('Public signals:');
             console.log('Expected E:', expectedE);

@@ -48,20 +48,20 @@ template BigMod(n, ka, kb) {
     }
 }
 
-template BigModExp (n, k) {
+template BigModExp (n, k, exp_bits) {
     // outputs a**b mod c, where b is expressed AS AN ARRAY OF BITS 
     signal input a[k];
-    signal input b[n * k];
+    signal input b[exp_bits];
     signal input c[k];
     signal output out[k];
 
-    component mod1[n * k];
-    component mod2[n * k];
-    component mul1[n * k];
-    component mul2[n * k];
+    component mod1[exp_bits];
+    component mod2[exp_bits];
+    component mul1[exp_bits];
+    component mul2[exp_bits];
 
-    signal partial[n * k + 1][k];
-    signal powers[n * k][k];
+    signal partial[exp_bits + 1][k];
+    signal powers[exp_bits][k];
     partial[0][0] <== 1;
     for (var i = 0; i < k; i++) {
         powers[0][i] <== a[i];
@@ -71,7 +71,7 @@ template BigModExp (n, k) {
     }
     // powers[0] <== a;
 
-    for (var i = 0; i < n * k; i++) {
+    for (var i = 0; i < exp_bits; i++) {
         // mod1[i] = BigMod(n, 2*k, k);
         // store the partial products in partial[i+1]
         mul1[i] = BigMult(n, k, k);
@@ -91,7 +91,7 @@ template BigModExp (n, k) {
         }
         
         // now store the square of the previous power in powers[i+1]
-        if (i < n * k - 1) {
+        if (i < exp_bits - 1) {
             mul2[i] = BigMult(n, k, k);
             for (var j = 0; j < k; j++) {
                 mul2[i].a[j] <== powers[i][j];
@@ -111,23 +111,23 @@ template BigModExp (n, k) {
     }
 
     for (var i = 0; i < k; i++) {
-        out[i] <== partial[n * k][i];
+        out[i] <== partial[exp_bits][i];
     }
 
 }
 
-template GroupVerify(size, n, k) {
+template GroupVerify(size, n, k, exp_bits) {
     signal input sig[k];
-    signal input e[size][n * k];
+    signal input e[size][exp_bits];
     signal input N[size][k];
     signal input message[k];
     signal input index;
 
-    component muxE = Multiplexer(n * k, size);
+    component muxE = Multiplexer(exp_bits, size);
     component muxN = Multiplexer(k, size);
 
     for (var i = 0; i < size; i++) {
-        for (var j = 0; j < n * k; j++) {
+        for (var j = 0; j < exp_bits; j++) {
             muxE.inp[i][j] <== e[i][j];
         }
         for (var j = 0; j < k; j++) {
@@ -137,13 +137,13 @@ template GroupVerify(size, n, k) {
     muxE.sel <== index;
     muxN.sel <== index;
 
-    component exp = BigModExp(n, k);
+    component exp = BigModExp(n, k, exp_bits);
     
     for (var j = 0; j < k; j++) {
         exp.a[j] <== sig[j];
         exp.c[j] <== muxN.out[j];
     }
-    for (var j = 0; j < n * k; j++) {
+    for (var j = 0; j < exp_bits; j++) {
         exp.b[j] <== muxE.out[j];
     }
     for (var j = 0; j < k; j++) {
@@ -159,7 +159,7 @@ template Main() {
 //b = 11
 //c = 97
 
-component main {public [e, N, message]} = GroupVerify(3, 64, 2);
+component main {public [e, N, message]} = GroupVerify(3, 64, 50, 17);
 
 /* INPUT = {
     "sig": ["1", "1", "0"],
