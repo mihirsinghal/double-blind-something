@@ -24,7 +24,7 @@ function bigIntTo120BitChunks(bigNum, numChunks) {
     let remaining = BigInt(bigNum);
     
     for (let i = 0; i < numChunks; i++) {
-        chunks.push(Number(remaining & mask));
+        chunks.push((remaining & mask).toString());
         remaining = remaining >> BigInt(120);
     }
     
