@@ -1,10 +1,10 @@
 pragma circom 2.1.6;
 
-include "node_modules/circomlib/circuits/poseidon.circom";
-include "node_modules/circomlib/circuits/bitify.circom";
+// include "node_modules/circomlib/circuits/poseidon.circom";
+// include "node_modules/circomlib/circuits/bitify.circom";
 include "bigint_func.circom";
 include "bigint.circom";
-// include "circomlib/poseidon.circom";
+include "circomlib/poseidon.circom";
 // include "circomlib/bitify.circom";
 
 
@@ -116,6 +116,51 @@ template BigModExp (n, k) {
 
 }
 
+template GroupVerify(size, n, k) {
+    signal input sig[k];
+    signal input e[size][n * k];
+    signal input N[size][k];
+    signal input message[k];
+
+    component exp[size];
+    component add[size];
+    component mul[size];
+    signal differences[size][k];
+
+    for (var i = 0; i < size; i++) {
+        exp[i] = BigModExp(n, k);
+        for (var j = 0; j < k; j++) {
+            exp[i].a[j] <== sig[j];
+            exp[i].c[j] <== N[i][j];
+        }
+        for (var j = 0; j < n * k; j++) {
+            exp[i].b[j] <== e[i][j];
+        }
+        for (var l = 0; l < k; l++) {
+            differences[i][l] <== exp[i].out[l] - message[l];
+        }
+    }
+
+    signal inv[size][k];
+    signal z[size][k];
+    signal temp[size][k];
+    signal accum[size][k+1];
+    for (var i = 0; i < size; i++) {
+        for (var j = 0; j < k; j++) {
+            inv[i][j] <-- (differences[i][j] == 0) ? 1 : 0;
+            z[i][j] <-- (differences[i][j] == 0) ? 0 : 1/differences[i][j];
+            temp[i][j] <== z[i][j] * differences[i][j];
+
+            0 === inv[i][j] * differences[i][j];
+            (inv[i][j] - 1) * (temp[i][j] - 1) === 0;
+            (inv[i][j] - 1) * inv[i][j] === 0;
+            accum[i][j] <== (j == 0) ? 1 : accum[i][j - 1] * inv[i][j];
+        }
+        accum[i][k] <== (i == 0) ? (accum[0][k-1] - 1) : accum[i - 1][k] * (accum[i][k-1] - 1);
+    }
+    accum[size - 1][k] === 0;
+}
+
 
 template Main() {
     signal output out;
@@ -124,12 +169,20 @@ template Main() {
 //b = 11
 //c = 97
 
-component main = BigModExp(2, 4);
-
-
+component main = GroupVerify(3, 4, 3);
 
 /* INPUT = {
-    "a": ["3", "1", "1", "0"],
-    "b": ["1", "1", "0", "1", "0", "0", "0", "0"],
-    "c": ["1", "0", "2", "1"]
+    "sig": ["1", "1", "0"],
+    "e": [
+        ["1", "0", "1", "0", "0", "0", "0", "0", "0", "0", "0", "0"],
+        ["1", "1", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0"],
+        ["1", "0", "0", "1", "0", "0", "0", "0", "0", "0", "0", "0"] 
+    ],
+    "N": [
+        ["1", "1", "1"],
+        ["1", "0", "1"],
+        ["1", "1", "0"] 
+    ],
+    "message": ["1", "0", "1"]
 } */
+
