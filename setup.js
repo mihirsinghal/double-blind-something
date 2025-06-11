@@ -21,9 +21,9 @@ async function setup() {
         
         // Download powers of tau if not exists (need larger file for RSA circuit)
         console.log("Checking powers of tau file...");
-        const ptauFile = "powersOfTau28_hez_final_20.ptau";
+        const ptauFile = "powersOfTau28_hez_final_22.ptau";
         if (!fs.existsSync(`./${ptauFile}`)) {
-            console.log("Downloading powers of tau (this may take a while - ~50MB)...");
+            console.log("Downloading powers of tau (this may take a while - ~200MB)...");
             try {
                 execSync(`curl -L -o ${ptauFile} https://storage.googleapis.com/zkevm/ptau/${ptauFile}`, { stdio: 'inherit' });
             } catch (error) {

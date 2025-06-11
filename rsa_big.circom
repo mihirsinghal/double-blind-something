@@ -169,7 +169,7 @@ template Main() {
 //b = 11
 //c = 97
 
-component main = GroupVerify(3, 4, 3);
+component main {public [e, N, message]} = GroupVerify(3, 64, 2);
 
 /* INPUT = {
     "sig": ["1", "1", "0"],
