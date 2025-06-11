@@ -33,6 +33,9 @@ privkey.py
 pubkey.py
 ssh_extract_3.py
 
+# Signature files
+signature.sig
+
 
 
 
