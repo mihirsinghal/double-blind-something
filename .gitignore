@@ -18,6 +18,12 @@
 # misc
 .DS_Store
 *.pem
+*.zkey
+*.wasm
+*.r1cs
+*.sym
+*_js/
+
 # powers of tau files
 powersOfTau28_hez_final_*.ptau
 verification_key.json
