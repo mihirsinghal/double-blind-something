@@ -91,6 +91,14 @@
         </div>
 
         <div class="section">
+            <h3>SSH Public Key Parser</h3>
+            <label>SSH Public Key Content:<br><small>Paste the content of an SSH public key file (id_rsa.pub) or a single line like: ssh-rsa AAAAB3NzaC1yc2E...</small></label>
+            <textarea id="sshPublicKeyInput" rows="4" placeholder="Paste SSH public key here (ssh-rsa AAAAB3NzaC1yc2E... user@host)"></textarea>
+            <button onclick="extractSSHPublicKey()">Extract Public Key Components</button>
+            <div id="sshPublicKeyOutput" class="output"></div>
+        </div>
+
+        <div class="section">
             <h3>Setup</h3>
             <label>Public Keys (format: e1,n1;e2,n2;...):<br><small>Supports large exponents and moduli. Enter as decimal or hex (0x...) numbers. Example: 0x10001,0xC34F...;65537,12345678901234567890</small></label>
             <input type="text" id="publicKeys" placeholder="Enter public key pairs like: 65537,12345678901234567890;0x10001,0xC34F...">
