@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>RSA Signature ZK Proof</title>
+    <title>SSH Zero-Knowledge Proof Generator</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -80,23 +80,8 @@
 </head>
 <body>
     <div class="container">
-        <h1>RSA Signature ZK Proof</h1>
+        <h1>SSH Zero-Knowledge Proof Generator</h1>
         
-        <div class="section">
-            <h3>SSH Signature Extractor</h3>
-            <label>SSH Signature File Content:<br><small>Paste the entire content of an SSH signature file (.sig) created by ssh-keygen</small></label>
-            <textarea id="sshSignatureInput" rows="8" placeholder="Paste SSH signature file content here (-----BEGIN SSH SIGNATURE----- ... -----END SSH SIGNATURE-----)"></textarea>
-            <button onclick="extractSSHSignature()">Extract Signature Integer</button>
-            <div id="sshSignatureOutput" class="output"></div>
-        </div>
-
-        <div class="section">
-            <h3>SSH Public Key Parser</h3>
-            <label>SSH RSA Public Key:<br><small>Paste an SSH RSA public key (ssh-rsa AAAAB3... [comment])</small></label>
-            <textarea id="publicKeyInput" rows="4" placeholder="Paste SSH RSA public key here (ssh-rsa AAAAB3NzaC1yc2E...)"></textarea>
-            <button onclick="extractPublicKey()">Parse Public Key</button>
-            <div id="publicKeyOutput" class="output"></div>
-        </div>
 
         <div class="section" style="border: 2px solid #28a745; background-color: #1e3a1e;">
             <h3>🎯 Streamlined SSH ZK Proof Generator</h3>
@@ -133,56 +118,6 @@ ssh-rsa AAAAB3NzaC1yc2E... user2@host2
             </div>
         </div>
 
-        <details>
-            <summary style="color: #ffffff; cursor: pointer; margin: 20px 0; font-weight: bold;">🔧 Advanced Tools</summary>
-            
-            <div class="section">
-                <h3>Integer-Based ZK Proof Generator</h3>
-                <p style="color: #ffc107; font-size: 14px; margin-bottom: 15px;">
-                    <strong>Alternative workflow using raw integers instead of SSH formats</strong>
-                </p>
-                
-                <label>Signature (hidden):</label>
-                <input type="text" id="signature" placeholder="Enter RSA signature (this will remain private)">
-                
-                <label>Message:</label>
-                <input type="text" id="message" placeholder="Enter message that was signed">
-                
-                <label>Public Keys (format: e1,n1;e2,n2;...):</label>
-                <input type="text" id="publicKeys" placeholder="Enter public key pairs like: 65537,12345678901234567890;0x10001,0xC34F...">
-                
-                <button onclick="streamlinedProofGeneration()" style="background-color: #28a745; font-weight: bold;">
-                    🚀 Generate Zero-Knowledge Proof (Integer Mode)
-                </button>
-                <div id="integerStreamlinedOutput" class="output"></div>
-            </div>
-
-            <div class="section">
-                <h3>Advanced Setup</h3>
-                <label>Public Keys (format: e1,n1;e2,n2;...):<br><small>Supports large exponents and moduli. Enter as decimal or hex (0x...) numbers. Example: 0x10001,0xC34F...;65537,12345678901234567890</small></label>
-                <input type="text" id="publicKeys2" placeholder="Enter public key pairs like: 65537,12345678901234567890;0x10001,0xC34F...">
-                <button onclick="setupCircuit()">Setup Circuit</button>
-                <div id="setupOutput" class="output"></div>
-            </div>
-
-            <div class="section">
-                <h3>Advanced Proof Generation</h3>
-                <label>Signature:</label>
-                <input type="text" id="signature2" placeholder="Enter RSA signature">
-                <label>Message:</label>
-                <input type="text" id="message2" placeholder="Enter message that was signed">
-                <button onclick="generateProof()">Generate Proof</button>
-                <div id="proofOutput" class="output"></div>
-            </div>
-
-            <div class="section">
-                <h3>Verify Proof</h3>
-                <label>Proof JSON:</label>
-                <textarea id="proofJson" rows="10" placeholder="Paste proof JSON here"></textarea>
-                <button onclick="verifyProof()">Verify Proof</button>
-                <div id="verifyOutput" class="output"></div>
-            </div>
-        </details>
     </div>
 
     <script src="https://unpkg.com/snarkjs@latest/build/snarkjs.min.js"></script>
