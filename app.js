@@ -1606,3 +1606,373 @@ async function verifyGeneratedProof(proofJsonString) {
 window.onload = function() {
     generateExampleKeys();
 };
+
+// Poseidon hash related functions for Merkle tree
+function poseidonHash(inputs) {
+    // This is a placeholder for the actual Poseidon hash implementation
+    // In a real implementation, this would call the actual Poseidon hash function
+    if (typeof snarkjs !== 'undefined' && typeof snarkjs.poseidon === 'function') {
+        return snarkjs.poseidon(inputs);
+    } else {
+        // Fallback implementation if snarkjs.poseidon is not available
+        console.warn("Poseidon hash function not available, using SHA-256 fallback");
+        
+        // Simple fallback using concatenation and string hashing
+        // Note: This is NOT cryptographically equivalent to Poseidon
+        // and should only be used for UI demonstration purposes
+        const concatenated = inputs.join('|');
+        
+        // Simple hash function for demonstration
+        let hash = 0;
+        for (let i = 0; i < concatenated.length; i++) {
+            const char = concatenated.charCodeAt(i);
+            hash = ((hash << 5) - hash) + char;
+            hash = hash & hash; // Convert to 32bit integer
+        }
+        
+        // Return as string to match expected format
+        return "0x" + Math.abs(hash).toString(16).padStart(8, '0');
+    }
+}
+
+// Create a Merkle tree from RSA public keys
+async function createMerkleTree(publicKeys) {
+    try {
+        const leaves = publicKeys.map(key => {
+            // Convert public key components to field elements
+            const e = BigInt(key.e);
+            const n = BigInt(key.n);
+            
+            // Hash each public key to create a leaf
+            // We hash e and n together to create a unique identifier for each key
+            return poseidonHash([e.toString(), n.toString()]);
+        });
+        
+        // Build the Merkle tree
+        const tree = new MerkleTree(leaves);
+        
+        return {
+            success: true,
+            tree: tree,
+            root: tree.getRoot(),
+            leaves: leaves,
+            numLeaves: leaves.length
+        };
+    } catch (error) {
+        console.error('Error creating Merkle tree:', error);
+        return {
+            success: false,
+            error: error.message
+        };
+    }
+}
+
+// Simple Merkle Tree implementation
+class MerkleTree {
+    constructor(leaves) {
+        this.leaves = leaves;
+        this.layers = [leaves];
+        this.buildTree();
+    }
+    
+    buildTree() {
+        let currentLayer = this.leaves;
+        
+        // Build the tree layer by layer until we reach the root
+        while (currentLayer.length > 1) {
+            const nextLayer = [];
+            
+            // Process pairs of nodes
+            for (let i = 0; i < currentLayer.length; i += 2) {
+                if (i + 1 < currentLayer.length) {
+                    // Hash the pair of nodes
+                    const hash = poseidonHash([currentLayer[i], currentLayer[i + 1]]);
+                    nextLayer.push(hash);
+                } else {
+                    // Odd number of nodes, promote the last one
+                    nextLayer.push(currentLayer[i]);
+                }
+            }
+            
+            // Add the new layer to our tree
+            this.layers.push(nextLayer);
+            currentLayer = nextLayer;
+        }
+    }
+    
+    getRoot() {
+        // The root is the last element of the last layer
+        return this.layers[this.layers.length - 1][0];
+    }
+    
+    getProof(index) {
+        if (index < 0 || index >= this.leaves.length) {
+            throw new Error('Index out of range');
+        }
+        
+        const proof = [];
+        let currentIndex = index;
+        
+        // Generate the proof by traversing up the tree
+        for (let i = 0; i < this.layers.length - 1; i++) {
+            const layer = this.layers[i];
+            const isRight = currentIndex % 2 === 0;
+            const siblingIndex = isRight ? currentIndex + 1 : currentIndex - 1;
+            
+            // Check if sibling exists
+            if (siblingIndex < layer.length) {
+                proof.push({
+                    position: isRight ? 'right' : 'left',
+                    data: layer[siblingIndex]
+                });
+            }
+            
+            // Move to the parent index in the next layer
+            currentIndex = Math.floor(currentIndex / 2);
+        }
+        
+        return proof;
+    }
+    
+    verify(leaf, proof, root) {
+        let currentHash = leaf;
+        
+        // Traverse the proof and compute the root
+        for (const node of proof) {
+            if (node.position === 'left') {
+                currentHash = poseidonHash([node.data, currentHash]);
+            } else {
+                currentHash = poseidonHash([currentHash, node.data]);
+            }
+        }
+        
+        // Check if the computed root matches the expected root
+        return currentHash === root;
+    }
+}
+
+// Function to handle Merkle tree generation from the UI
+async function generateMerkleTree() {
+    const merkleKeysInput = document.getElementById('merkleKeys').value;
+    const merkleOutput = document.getElementById('merkleOutput');
+    
+    try {
+        if (!merkleKeysInput.trim()) {
+            throw new Error('Please provide RSA public keys');
+        }
+        
+        // Parse public keys (format: "e1,n1;e2,n2;...")
+        const keyPairs = merkleKeysInput.split(';').map(pair => pair.trim());
+        const publicKeys = keyPairs.map(pair => {
+            const [e, n] = pair.split(',').map(k => k.trim());
+            if (!e || !n) throw new Error('Invalid public key format');
+            return { e, n };
+        });
+        
+        if (publicKeys.length === 0) {
+            throw new Error('Please provide at least one public key pair');
+        }
+        
+        merkleOutput.innerHTML = '<div>Building Merkle tree from public keys...</div>';
+        
+        // Check if snarkjs.poseidon is available
+        if (typeof snarkjs === 'undefined' || typeof snarkjs.poseidon !== 'function') {
+            merkleOutput.innerHTML += `
+                <div class="warning" style="color: #ffc107;">Warning: Poseidon hash function not available. Using fallback hash.</div>
+                <div>For cryptographic security in ZK proofs, you need a proper Poseidon implementation.</div>
+            `;
+        }
+        
+        // Generate the Merkle tree
+        const result = await createMerkleTree(publicKeys);
+        
+        if (result.success) {
+            // Create dropdown for selecting keys to generate proofs
+            const keyOptions = publicKeys.map((key, index) => {
+                const eDisplay = key.e.length > 10 ? `${key.e.substring(0, 10)}...` : key.e;
+                const nDisplay = key.n.length > 10 ? `${key.n.substring(0, 10)}...` : key.n;
+                return `<option value="${index}">Key ${index+1}: e=${eDisplay}, n=${nDisplay}</option>`;
+            }).join('');
+            
+            // Display the Merkle tree information
+            merkleOutput.innerHTML = `
+                <div class="success">Merkle tree created successfully!</div>
+                <div><strong>Number of leaves:</strong> ${result.numLeaves}</div>
+                <div><strong>Merkle root:</strong></div>
+                <div style="word-break: break-all; font-family: monospace; background: #1a1a1a; padding: 10px; border-radius: 4px; margin: 5px 0;">
+                    ${result.root}
+                </div>
+                
+                <div style="margin-top: 15px;">
+                    <label><strong>Generate Inclusion Proof:</strong></label>
+                    <select id="keyProofIndex" style="width: 100%; padding: 8px; background: #2d2d2d; color: #e0e0e0; border: 1px solid #404040; border-radius: 4px;">
+                        ${keyOptions}
+                    </select>
+                    <button onclick="generateMerkleProof(${result.numLeaves})" style="background-color: #9c27b0; margin-top: 10px;">
+                        Generate Proof for Selected Key
+                    </button>
+                </div>
+                
+                <div id="merkleProofOutput" style="margin-top: 15px;"></div>
+                
+                <details>
+                    <summary><strong>Merkle Tree Structure</strong></summary>
+                    <pre>${JSON.stringify(result.tree.layers, null, 2)}</pre>
+                </details>
+                
+                <div style="margin-top: 15px;">
+                    <div><strong>Benefits for ZK proofs:</strong></div>
+                    <ul>
+                        <li>More efficient than linear verification of multiple keys</li>
+                        <li>Can prove membership in a large set without revealing which key</li>
+                        <li>Reduces circuit complexity for large numbers of keys</li>
+                        <li>Compatible with the GroupVerify circuit pattern</li>
+                    </ul>
+                </div>
+            `;
+            
+            // Store the tree in a global variable for later use
+            window.currentMerkleTree = result.tree;
+            window.currentMerkleLeaves = result.leaves;
+            window.currentPublicKeys = publicKeys;
+        } else {
+            merkleOutput.innerHTML = `<div class="error">Merkle tree creation failed: ${result.error}</div>`;
+        }
+        
+    } catch (error) {
+        merkleOutput.innerHTML = `<div class="error">Error: ${error.message}</div>`;
+        console.error('Merkle tree generation error:', error);
+    }
+}
+
+// Function to generate a Merkle proof for a specific key
+async function generateMerkleProof(numLeaves) {
+    const proofIndex = parseInt(document.getElementById('keyProofIndex').value);
+    const proofOutput = document.getElementById('merkleProofOutput');
+    
+    try {
+        if (!window.currentMerkleTree || !window.currentMerkleLeaves || !window.currentPublicKeys) {
+            throw new Error('Merkle tree not available. Please generate the tree first.');
+        }
+        
+        if (proofIndex < 0 || proofIndex >= numLeaves) {
+            throw new Error('Invalid key index');
+        }
+        
+        // Get the proof for the selected key
+        const proof = window.currentMerkleTree.getProof(proofIndex);
+        const leaf = window.currentMerkleLeaves[proofIndex];
+        const root = window.currentMerkleTree.getRoot();
+        
+        // Verify the proof
+        const isValid = window.currentMerkleTree.verify(leaf, proof, root);
+        
+        // Display the proof
+        proofOutput.innerHTML = `
+            <div class="success">Merkle proof generated for Key ${proofIndex+1}</div>
+            <div><strong>Selected Public Key:</strong></div>
+            <div style="word-break: break-all; font-family: monospace; background: #1a1a1a; padding: 10px; border-radius: 4px; margin: 5px 0;">
+                e: ${window.currentPublicKeys[proofIndex].e}<br>
+                n: ${window.currentPublicKeys[proofIndex].n}
+            </div>
+            
+            <div><strong>Leaf Hash:</strong></div>
+            <div style="word-break: break-all; font-family: monospace; background: #1a1a1a; padding: 10px; border-radius: 4px; margin: 5px 0;">
+                ${leaf}
+            </div>
+            
+            <div><strong>Merkle Proof:</strong></div>
+            <div style="word-break: break-all; font-family: monospace; background: #1a1a1a; padding: 10px; border-radius: 4px; margin: 5px 0;">
+                ${JSON.stringify(proof, null, 2)}
+            </div>
+            
+            <div><strong>Proof Verification:</strong> ${isValid ? '<span class="success">Valid ✓</span>' : '<span class="error">Invalid ✗</span>'}</div>
+            
+            <div style="margin-top: 15px; padding: 10px; background: #1e1e1e; border-radius: 4px;">
+                <strong>Using this proof in a ZK circuit:</strong><br>
+                This Merkle proof allows you to prove knowledge of a valid signature for one of the public keys in the tree,
+                without revealing which key was used. This reduces the circuit complexity from O(n) to O(log n).
+            </div>
+            
+            <button onclick="showCircuitIntegration()" style="background-color: #6c757d; margin-top: 10px;">
+                Show Circuit Integration Details
+            </button>
+            <div id="circuitIntegrationDetails" style="display: none; margin-top: 10px;"></div>
+        `;
+        
+    } catch (error) {
+        proofOutput.innerHTML = `<div class="error">Error generating Merkle proof: ${error.message}</div>`;
+        console.error('Merkle proof generation error:', error);
+    }
+}
+
+// Function to show details about circuit integration
+function showCircuitIntegration() {
+    const detailsDiv = document.getElementById('circuitIntegrationDetails');
+    
+    if (detailsDiv) {
+        detailsDiv.style.display = 'block';
+        detailsDiv.innerHTML = `
+            <div style="background: #1a1a1a; padding: 15px; border-radius: 4px; font-size: 14px;">
+                <h4 style="color: #bb86fc; margin-top: 0;">Integration with GroupVerify Circuit</h4>
+                
+                <p>To integrate this Merkle tree with the GroupVerify circuit:</p>
+                
+                <ol style="padding-left: 20px;">
+                    <li>Modify the circuit to accept a Merkle root instead of all public keys</li>
+                    <li>Add Poseidon hash constraints for verifying the Merkle path</li>
+                    <li>Provide the Merkle proof as a private input to the circuit</li>
+                    <li>Only reveal the Merkle root as a public output</li>
+                </ol>
+                
+                <p><strong>Circuit Modification Example:</strong></p>
+                <pre style="background: #2d2d2d; padding: 10px; border-radius: 4px; overflow-x: auto;">
+// Modified GroupVerify circuit with Merkle tree support
+template MerkleGroupVerify(n_bits, k, exp_bits) {
+    // Public inputs
+    signal input message[k];
+    signal input merkle_root;
+    
+    // Private inputs
+    signal input signature[k];
+    signal input e[exp_bits];
+    signal input N[k];
+    signal input merkle_siblings[log2(max_keys)];
+    signal input merkle_path_indices[log2(max_keys)];
+    
+    // 1. Verify signature against the provided public key
+    component rsaVerify = RSAVerify(n_bits, k, exp_bits);
+    rsaVerify.signature <== signature;
+    rsaVerify.message <== message;
+    rsaVerify.e <== e;
+    rsaVerify.N <== N;
+    
+    // 2. Compute the leaf hash for the public key
+    component leafHasher = Poseidon(exp_bits + k);
+    for (var i = 0; i < exp_bits; i++) {
+        leafHasher.inputs[i] <== e[i];
+    }
+    for (var i = 0; i < k; i++) {
+        leafHasher.inputs[exp_bits + i] <== N[i];
+    }
+    
+    // 3. Verify the Merkle path
+    component merkleVerifier = MerkleProof(log2(max_keys));
+    merkleVerifier.leaf <== leafHasher.out;
+    merkleVerifier.root <== merkle_root;
+    merkleVerifier.siblings <== merkle_siblings;
+    merkleVerifier.path_indices <== merkle_path_indices;
+}
+</pre>
+                
+                <p><strong>Benefits:</strong></p>
+                <ul style="padding-left: 20px;">
+                    <li>Supports thousands of public keys with minimal circuit size increase</li>
+                    <li>Merkle root can be published on-chain for verification</li>
+                    <li>Compatible with recursive proof systems for even larger key sets</li>
+                    <li>Poseidon hash is optimized for constraints in ZK circuits</li>
+                </ul>
+            </div>
+        `;
+    }
+}

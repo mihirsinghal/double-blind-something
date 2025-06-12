@@ -98,6 +98,34 @@
             <div id="publicKeyOutput" class="output"></div>
         </div>
 
+        <div class="section" style="border: 2px solid #9c27b0; background-color: #2e1534;">
+            <h3>🌳 Merkle Tree Generator for RSA Keys</h3>
+            <p style="color: #bb86fc; font-size: 14px; margin-bottom: 15px;">
+                <strong>Create a Merkle tree from RSA public keys using Poseidon hash for more efficient ZK proofs</strong>
+            </p>
+            
+            <label>RSA Public Keys (format: e1,n1;e2,n2;...):<br><small>Enter multiple RSA public keys to build a Merkle tree</small></label>
+            <textarea id="merkleKeys" rows="6" placeholder="Enter public key pairs like:
+65537,12345678901234567890;
+65537,98765432109876543210;
+65537,13579246801357924680"></textarea>
+            
+            <button onclick="generateMerkleTree()" style="background-color: #9c27b0; font-weight: bold;">
+                🌳 Generate Merkle Tree
+            </button>
+            <div id="merkleOutput" class="output"></div>
+            
+            <div style="margin-top: 15px; padding: 10px; background: #1e1e1e; border-radius: 4px; font-size: 13px;">
+                <strong>Why use a Merkle tree?</strong>
+                <ul style="margin-top: 5px; padding-left: 20px;">
+                    <li>Efficiently prove membership in a large set of public keys</li>
+                    <li>Reduce circuit complexity from O(n) to O(log n)</li>
+                    <li>Compatible with Poseidon hash in ZK circuits</li>
+                    <li>Optimize the GroupVerify component for large key sets</li>
+                </ul>
+            </div>
+        </div>
+
         <div class="section" style="border: 2px solid #28a745; background-color: #1e3a1e;">
             <h3>🎯 Streamlined SSH ZK Proof Generator</h3>
             <p style="color: #51cf66; font-size: 14px; margin-bottom: 15px;">
