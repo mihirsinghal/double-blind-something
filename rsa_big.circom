@@ -116,6 +116,57 @@ template BigModExp (n, k, exp_bits) {
 
 }
 
+template BigModExp16 (n, k) {
+    // outputs a**b mod c, where b is expressed AS AN ARRAY OF BITS 
+    signal input a[k];
+    signal input c[k];
+    signal output out[k];
+
+    component mul1[16];
+    component mod1[16];
+    
+    // powers[0] <== a;
+
+    for (var i = 0; i < 16; i++) {
+        mul1[i] = BigMult(n, k, k);
+        if (i == 0) {
+            for (var j = 0; j < k; j++) {
+                mul1[i].a[j] <== a[j];
+                mul1[i].b[j] <== a[j];
+            }
+        } else {
+            for (var j = 0; j < k; j++) {
+                mul1[i].a[j] <== mul1[i-1].out[j];
+                mul1[i].b[j] <== mul1[i-1].out[j];
+            }
+        }
+        mod1[i] = BigMod(n, 2 * k, k);
+        for (var j = 0; j < 2 * k; j++) {
+            mod1[i].a[j] <== mul1[i].out[j];
+        }
+        for (var j = 0; j < k; j++) {
+            mod1[i].b[j] <== c[j];
+        }
+    }
+    component mul2 = BigMult(n, k, k);
+    component mod2 = BigMod(n, 2 * k, k);
+    for (var i = 0; i < k; i++) {
+        mul2.a[i] <== mul1[15].out[i];
+        mul2.b[i] <== a[i];
+    }
+    for (var i = 0; i < 2 * k; i++) {
+        mod2.a[i] <== mul2.out[i];
+    }
+    for (var i = 0; i < k; i++) {
+        mod2.b[i] <== c[i];
+    }
+
+    for (var i = 0; i < k; i++) {
+        out[i] <== mod2.out[i];
+    }
+
+}
+
 template GroupVerify(size, n, k, exp_bits) {
     signal input sig[k];
     signal input e[size][exp_bits];
@@ -137,14 +188,11 @@ template GroupVerify(size, n, k, exp_bits) {
     muxE.sel <== index;
     muxN.sel <== index;
 
-    component exp = BigModExp(n, k, exp_bits);
+    component exp = BigModExp16(n, k);
     
     for (var j = 0; j < k; j++) {
         exp.a[j] <== sig[j];
         exp.c[j] <== muxN.out[j];
-    }
-    for (var j = 0; j < exp_bits; j++) {
-        exp.b[j] <== muxE.out[j];
     }
     for (var j = 0; j < k; j++) {
         message[j] === exp.out[j];
